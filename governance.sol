@@ -7,11 +7,11 @@ interface IERC20 {
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
     function transfer(address to, uint256 amount) external returns (bool);
-    function addUser(address _addressToWhitelist) external;
+    function addWhitelist(address _addressToWhitelist) external;
     function verifyUser(address _whitelistedAddress) external view returns(bool);
     function removeFromWhitelist(address[] calldata toRemoveAddresses)external;
 }
-contract TokenBurningContract {
+contract Governance {
     address public admin;
     uint256 public totalVotes;
     uint count=1;
