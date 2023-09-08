@@ -236,8 +236,8 @@ contract TestToken is IERC20,Ownable {
         return _balances[account];
     }
  
-     function Mint(uint amount)public onlyOwner() {
-        _mint(msg.sender,amount);
+     function Mint(uint amount,address _wallet)public onlyOwner() {
+        _mint(_wallet,amount);
     }
      function _mint(address account, uint256 amount) internal virtual {
         require(account != address(0), "ERC20: mint to the zero address");
@@ -372,7 +372,7 @@ contract TestToken is IERC20,Ownable {
     }
     mapping(address => bool) whitelistedAddresses;
 
-    function addUser(address _addressToWhitelist) public onlyOwner {
+    function addWhitelist(address _addressToWhitelist) public onlyOwner {
         whitelistedAddresses[_addressToWhitelist] = true;
     }
 
