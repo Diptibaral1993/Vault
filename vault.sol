@@ -181,25 +181,44 @@ contract vault is Ownable
 
     function withdrawReward(address _ERC20tokenaddress) public returns (bool){
         require(IERC20OwnToken(_ERC20tokenaddress).verifyUser(msg.sender),"Not Whitelist User");
-        require(usrReward[_ERC20tokenaddress][msg.sender].amount!=0,"You dont have any reward to withdraw");
+        setRewardInternal(_ERC20tokenaddress,msg.sender);
+        _usrReward storage reward=usrReward[_ERC20tokenaddress][msg.sender];
+        require(reward.amount!=0,"You dont have any reward to withdraw");
         
-        usrReward[_ERC20tokenaddress][msg.sender].amount=0;
-        usrReward[_ERC20tokenaddress][msg.sender].lastWithdrawTime=block.timestamp;
-        usrReward[_ERC20tokenaddress][msg.sender].withdrawn+=usrReward[_ERC20tokenaddress][msg.sender].amount;
-        IERC20(_Reward[_ERC20tokenaddress].nativeToken).transfer(msg.sender,usrReward[_ERC20tokenaddress][msg.sender].amount);
+        uint256 tempreward=reward.amount;
+
+        reward.withdrawn+=reward.amount;
+        reward.amount=0;
+        reward.lastWithdrawTime=block.timestamp;
+        
+        IERC20(_Reward[_ERC20tokenaddress].nativeToken).transfer(msg.sender,tempreward);
         return true;
     }
 
-    function setReward(address _wallet,uint256 _amount,uint256 _totalsupply) external returns (bool){
+    function setRewardInternal(address _ERC20tokenaddress,address _wallet) internal returns (bool){
         require(_wallet!=address(0),"Invalid Wallet");
-        uint256 lastdeposittime=_Reward[msg.sender].lastDepositTime;
+        uint256 lastdeposittime=_Reward[_ERC20tokenaddress].lastDepositTime;
+
+        uint256 _amount=IERC20OwnToken(_ERC20tokenaddress).balanceOf(_wallet);
+        uint256 _totalsupply=IERC20OwnToken(_ERC20tokenaddress).totalSupply();
+
+        _usrReward storage reward=usrReward[_ERC20tokenaddress][_wallet];
         if(lastdeposittime!=0)
         {
-            uint256 lastWithdrawtime=usrReward[msg.sender][_wallet].lastWithdrawTime;
+            uint256 lastWithdrawtime=reward.lastWithdrawTime;
             if(lastdeposittime<lastWithdrawtime || lastWithdrawtime==0)
             {
-                usrReward[msg.sender][_wallet].amount+=((_Reward[msg.sender].amount-usrReward[msg.sender][_wallet].lastRewardBalance) *(_amount*100)/_totalsupply)/100;
-                usrReward[msg.sender][_wallet].lastRewardBalance=_Reward[msg.sender].amount;
+                if(_Reward[_ERC20tokenaddress].amount==reward.lastRewardBalance)
+                {
+                    reward.amount+=((_Reward[_ERC20tokenaddress].amount) *(_amount*100)/_totalsupply)/100;
+                    reward.lastRewardBalance=_Reward[_ERC20tokenaddress].amount;
+                }
+                else 
+                {
+                    reward.amount+=((_Reward[_ERC20tokenaddress].amount-reward.lastRewardBalance) *(_amount*100)/_totalsupply)/100;
+                    reward.lastRewardBalance=_Reward[_ERC20tokenaddress].amount;
+                }
+                
             }
             return true;
         }
@@ -209,8 +228,74 @@ contract vault is Ownable
         }
     }
 
+    function setReward(address _wallet,uint256 _amount,uint256 _totalsupply) external returns (bool){
+        require(_wallet!=address(0),"Invalid Wallet");
+        uint256 lastdeposittime=_Reward[msg.sender].lastDepositTime;
+        _usrReward storage reward=usrReward[msg.sender][_wallet];
+        if(lastdeposittime!=0)
+        {
+            uint256 lastWithdrawtime=reward.lastWithdrawTime;
+            if(lastdeposittime<lastWithdrawtime || lastWithdrawtime==0)
+            {
+                if(_Reward[msg.sender].amount==reward.lastRewardBalance){
+                    reward.amount+=((_Reward[msg.sender].amount) *(_amount*100)/_totalsupply)/100;
+                    reward.lastRewardBalance=_Reward[msg.sender].amount;
+                }
+                else 
+                {
+                    reward.amount+=((_Reward[msg.sender].amount-reward.lastRewardBalance) *(_amount*100)/_totalsupply)/100;
+                    reward.lastRewardBalance=_Reward[msg.sender].amount;
+                }
+                
+            }
+            return true;
+        }
+        else 
+        {
+            return false;
+        }
+    }
 
-    function withdrawRewardAdmin(address _token) external virtual onlyOwner returns (bool){
+    function checkWalletReward(address _token) public view returns (uint256){
+
+        _usrReward storage reward=usrReward[_token][msg.sender];
+        uint256 balance=IERC20OwnToken(_token).balanceOf(msg.sender);
+        uint256 totalsupply=IERC20OwnToken(_token).totalSupply();
+        if(reward.lastRewardBalance==_Reward[_token].amount)
+        {
+            return (_Reward[_token].amount *(balance*100)/totalsupply)/100;
+         
+        }
+        else 
+        {
+            return ((_Reward[_token].amount-reward.lastRewardBalance) *(balance*100)/totalsupply)/100;
+         
+        }
+               
+    }
+
+    function checkWalletRewardAdmin(address _token,address _wallet) public view onlyOwner returns (uint256){
+
+        _usrReward storage reward=usrReward[_token][_wallet];
+        uint256 balance=IERC20OwnToken(_token).balanceOf(_wallet);
+        uint256 totalsupply=IERC20OwnToken(_token).totalSupply();
+
+        if(reward.lastRewardBalance==_Reward[_token].amount)
+        {
+            return ((_Reward[_token].amount) *(balance*100)/totalsupply)/100;
+         
+        }
+        else 
+        {
+            return ((_Reward[_token].amount-reward.lastRewardBalance) *(balance*100)/totalsupply)/100;
+         
+        }
+        
+                
+    }
+
+
+    function withdrawAdmin(address _token) external virtual onlyOwner returns (bool){
         IERC20(_Reward[_token].nativeToken).transfer(msg.sender,address(this).balance);
         return true;
     }
