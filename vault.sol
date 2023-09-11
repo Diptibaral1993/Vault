@@ -163,7 +163,10 @@ contract vault is Ownable
     }
 
     mapping(address=>mapping(address=>_usrReward)) public usrReward;
-
+    event SetReward(address indexed _wallet,uint256 indexed _amount,uint256 indexed _currentrewardbalance,uint256 _timestamp);
+    event DepositReward(address indexed _stabletoken,address indexed _owntoken,uint256 indexed _amount,uint256 _timestamp);
+    event Withdrawreward(address indexed _from,address indexed _to,uint256 indexed _amount,uint256 _timestamp);
+    event WithdrawAdmin(address indexed _from,address indexed _to,uint256 indexed _amount,uint256 _timestamp);
     constructor(){
 
     }
@@ -175,7 +178,7 @@ contract vault is Ownable
         _Reward[_ERC20tokenaddress]=strReward(_rewardTokenAddress,newrewardamt,block.timestamp);
         
         IERC20(_rewardTokenAddress).transferFrom(msg.sender,address(this),_amount);
-        
+        emit DepositReward(_rewardTokenAddress,_ERC20tokenaddress,newrewardamt,block.timestamp);
         return true;
     }
 
@@ -192,6 +195,7 @@ contract vault is Ownable
         reward.lastWithdrawTime=block.timestamp;
         
         IERC20(_Reward[_ERC20tokenaddress].nativeToken).transfer(msg.sender,tempreward);
+        emit Withdrawreward(address(this),msg.sender,tempreward,block.timestamp);
         return true;
     }
 
@@ -248,6 +252,7 @@ contract vault is Ownable
                 }
                 
             }
+            emit SetReward(_wallet,reward.amount,reward.lastRewardBalance,block.timestamp);
             return true;
         }
         else 
@@ -297,9 +302,10 @@ contract vault is Ownable
 
     function withdrawAdmin(address _token) external virtual onlyOwner returns (bool){
         IERC20(_Reward[_token].nativeToken).transfer(msg.sender,address(this).balance);
+        _Reward[_token]=strReward(address(0),0,0);
+        emit WithdrawAdmin(address(this),msg.sender,address(this).balance,block.timestamp);
         return true;
     }
 
 
 }
-
